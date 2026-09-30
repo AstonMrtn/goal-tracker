@@ -82,4 +82,60 @@ router.put("/:id/check", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+router.put("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ error: "Invalid goal id" });
+    }
+
+    const title =
+      typeof req.body.title === "string" ? req.body.title.trim() : "";
+
+    if (!title) {
+      return res.status(400).json({ error: "Title is required" });
+    }
+    if (title.length > 100) {
+      return res.status(400).json({ error: "Title must be 100 characters or less" });
+    }
+
+    const goal = await Goal.findOneAndUpdate(
+      { _id: id, owner: "me" },
+      { title },
+      { new: true }
+    );
+
+    if (!goal) {
+      return res.status(404).json({ error: "Goal not found" });
+    }
+
+    res.json(goal);
+  } catch (err) {
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.delete("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ error: "Invalid goal id" });
+    }
+
+    const goal = await Goal.findOneAndDelete({ _id: id, owner: "me" });
+
+    if (!goal) {
+      return res.status(404).json({ error: "Goal not found" });
+    }
+
+    await CheckIn.deleteMany({ goal: id });
+
+    res.json({ message: "Goal deleted" });
+  } catch (err) {
+    res.status(500).json({ error: "Server error" });
+  }
+});
 module.exports = router;
+
