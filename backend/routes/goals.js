@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const express = require("express");
 const Goal = require("../models/Goal");
 const CheckIn = require("../models/CheckIn");
@@ -45,6 +46,38 @@ router.get("/", async (req, res) => {
     }));
 
     res.json({ date, goals: result });
+  } catch (err) {
+    res.status(500).json({ error: "Server error" });
+  }
+});
+router.put("/:id/check", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ error: "Invalid goal id" });
+    }
+    if (typeof req.body.done !== "boolean") {
+      return res.status(400).json({ error: "done must be true or false" });
+    }
+
+    const date = req.body.date || todayIST();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ error: "Date must look like 2026-09-29" });
+    }
+
+    const goal = await Goal.findOne({ _id: id, owner: "me" });
+    if (!goal) {
+      return res.status(404).json({ error: "Goal not found" });
+    }
+
+    const checkIn = await CheckIn.findOneAndUpdate(
+      { goal: id, date, owner: "me" },
+      { done: req.body.done },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    res.json(checkIn);
   } catch (err) {
     res.status(500).json({ error: "Server error" });
   }
